@@ -62,8 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.date_range_rounded, color: onSurface, size: 22),
-            onPressed: () => _selectDateRange(context),
+            icon: Icon(Icons.tune_rounded, color: onSurface, size: 22),
+            onPressed: () => _showFilterOptions(context),
           ),
           const SizedBox(width: 8),
         ],
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Transform.translate(
         offset: const Offset(0, 18),
         child: FloatingActionButton(
-          onPressed: () => _showAddDialog(context),
+          onPressed: () => _showIncomeForm(context),
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           elevation: 6,
@@ -269,8 +269,17 @@ class _HomeScreenState extends State<HomeScreen> {
           if (_selectedIndex == 0 && items.isNotEmpty)
             TextButton(
               onPressed: () {
-                final ids = items.map((e) => e.id!).toList();
-                provider.markSelectedAsPaid(ids);
+                _showActionConfirmDialog(
+                  context: context,
+                  title: 'ยืนยันการรับเงินทั้งหมด',
+                  message:
+                      'คุณต้องการทำเครื่องหมายว่า "รับเงินแล้ว" สำหรับทุกรายการที่แสดงใช่หรือไม่?',
+                  confirmLabel: 'ยืนยัน',
+                  onConfirm: () {
+                    final ids = items.map((e) => e.id!).toList();
+                    provider.markSelectedAsPaid(ids);
+                  },
+                );
               },
               style: TextButton.styleFrom(
                 foregroundColor: softGreen,
@@ -279,6 +288,35 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Text(
                 'รับทั้งหมดแล้ว',
+                style: GoogleFonts.anuphan(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          if (_selectedIndex == 1 && items.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                _showActionConfirmDialog(
+                  context: context,
+                  title: 'ค้างรับทั้งหมดใหม่',
+                  message:
+                      'คุณต้องการเปลี่ยนสถานะทุกรายการที่แสดงกลับเป็น "ค้างรับ" ใช่หรือไม่?',
+                  confirmLabel: 'ยืนยัน',
+                  confirmColor: softAmber,
+                  onConfirm: () {
+                    final ids = items.map((e) => e.id!).toList();
+                    provider.markSelectedAsUnpaid(ids);
+                  },
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: softAmber,
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'ยกเลิกการรับทั้งหมด',
                 style: GoogleFonts.anuphan(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
@@ -295,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ═══════════════════════════════════════
   Widget _buildActiveFilters(BuildContext context, IncomeProvider provider) {
     if (provider.startDate == null) return const SizedBox.shrink();
-    final df = DateFormat('dd MMM yyyy');
+    final df = DateFormat('dd MMM yyyy', 'th');
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
       child: Container(
@@ -389,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Text(
-                  DateFormat('dd MMM yyyy').format(entry.date),
+                  DateFormat('dd MMM yyyy', 'th').format(entry.date),
                   style: GoogleFonts.anuphan(
                     fontSize: 12,
                     color: onSurface.withValues(alpha: 0.4),
@@ -409,14 +447,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               onSelected: (val) {
                 if (val == 'edit') {
-                  showDialog(
-                    context: context,
-                    builder: (_) => AddIncomeDialog(entry: entry),
-                  );
+                  _showIncomeForm(context, entry: entry);
                 } else if (val == 'paid') {
-                  provider.togglePaidStatus(entry);
+                  _showActionConfirmDialog(
+                    context: context,
+                    title: entry.isPaid
+                        ? 'ยกเลิกการรับเงิน'
+                        : 'ยืนยันการรับเงิน',
+                    message: entry.isPaid
+                        ? 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "ค้างรับ" ใช่หรือไม่?'
+                        : 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "รับเงินแล้ว" ใช่หรือไม่?',
+                    confirmLabel: 'ตกลง',
+                    confirmColor: entry.isPaid ? softAmber : softGreen,
+                    onConfirm: () => provider.togglePaidStatus(entry),
+                  );
                 } else if (val == 'delete') {
-                  _confirmDelete(context, entry, provider);
+                  _showActionConfirmDialog(
+                    context: context,
+                    title: 'ยืนยันการลบ',
+                    message: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
+                    confirmLabel: 'ลบ',
+                    confirmColor: softRed,
+                    onConfirm: () => provider.deleteIncome(entry.id!),
+                  );
                 }
               },
               itemBuilder: (context) => [
@@ -549,13 +602,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ═══════════════════════════════════════
-  // Confirm Delete Dialog
+  // Action Confirmation Dialog
   // ═══════════════════════════════════════
-  void _confirmDelete(
-    BuildContext context,
-    IncomeEntry entry,
-    IncomeProvider provider,
-  ) {
+  void _showActionConfirmDialog({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required VoidCallback onConfirm,
+    Color? confirmColor,
+  }) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -563,14 +619,14 @@ class _HomeScreenState extends State<HomeScreen> {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          'ยืนยันการลบ',
+          title,
           style: GoogleFonts.anuphan(
             fontWeight: FontWeight.w700,
             color: onSurface,
           ),
         ),
         content: Text(
-          'คุณต้องการลบรายการนี้ใช่หรือไม่?',
+          message,
           style: GoogleFonts.anuphan(color: onSurface.withValues(alpha: 0.7)),
         ),
         actions: [
@@ -586,13 +642,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           TextButton(
             onPressed: () {
-              provider.deleteIncome(entry.id!);
+              onConfirm();
               Navigator.pop(context);
             },
             child: Text(
-              'ลบ',
+              confirmLabel,
               style: GoogleFonts.anuphan(
-                color: softRed,
+                color: confirmColor ?? softBlue,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -602,37 +658,412 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    final provider = Provider.of<IncomeProvider>(context, listen: false);
-    final picked = await showDateRangePicker(
+  void _showFilterOptions(BuildContext context) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+    final weekStart = todayStart.subtract(Duration(days: now.weekday - 1));
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+
+    showModalBottomSheet(
       context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-      initialDateRange: provider.startDate != null
-          ? DateTimeRange(start: provider.startDate!, end: provider.endDate!)
-          : null,
-      builder: (context, child) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: isDark
-                ? Theme.of(context).colorScheme
-                : ColorScheme.light(
-                    primary: brandNavy,
-                    onPrimary: Colors.white,
-                    surface: surface,
-                    onSurface: brandNavy,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: onSurface.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.filter_list_rounded, color: onSurface, size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    'กรองตามช่วงเวลา',
+                    style: GoogleFonts.anuphan(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: onSurface,
+                    ),
                   ),
-            dialogTheme: DialogThemeData(backgroundColor: surface),
-          ),
-          child: child!,
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildFilterItem(
+              context,
+              Icons.all_inclusive_rounded,
+              'ทั้งหมด',
+              null,
+              null,
+            ),
+            _buildFilterItem(
+              context,
+              Icons.today_rounded,
+              'วันนี้',
+              todayStart,
+              todayEnd,
+            ),
+            _buildFilterItem(
+              context,
+              Icons.calendar_view_week_rounded,
+              'สัปดาห์นี้',
+              weekStart,
+              todayEnd,
+            ),
+            _buildFilterItem(
+              context,
+              Icons.calendar_month_rounded,
+              'เดือนนี้',
+              monthStart,
+              monthEnd,
+            ),
+            _buildFilterItem(
+              context,
+              Icons.date_range_rounded,
+              'เลือกช่วงเวลาเอง...',
+              null,
+              null,
+              isCustom: true,
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterItem(
+    BuildContext context,
+    IconData icon,
+    String label,
+    DateTime? start,
+    DateTime? end, {
+    bool isCustom = false,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: onSurface.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 20, color: onSurface.withValues(alpha: 0.7)),
+      ),
+      title: Text(
+        label,
+        style: GoogleFonts.anuphan(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: onSurface,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      onTap: () {
+        Navigator.pop(context);
+        if (isCustom) {
+          _showDateRangePickerInternal(context);
+        } else {
+          Provider.of<IncomeProvider>(
+            context,
+            listen: false,
+          ).setFilter(start, end);
+        }
+      },
+    );
+  }
+
+  void _showDateRangePickerInternal(BuildContext context) {
+    final provider = Provider.of<IncomeProvider>(context, listen: false);
+    DateTime startDate = provider.startDate ?? DateTime.now();
+    DateTime endDate = provider.endDate ?? DateTime.now();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> pickDate({required bool isStart}) async {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: isStart ? startDate : endDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: isDark
+                          ? Theme.of(context).colorScheme
+                          : ColorScheme.light(
+                              primary: brandNavy,
+                              onPrimary: Colors.white,
+                              surface: surface,
+                              onSurface: brandNavy,
+                            ),
+                      dialogTheme: DialogThemeData(backgroundColor: surface),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (picked != null) {
+                setSheetState(() {
+                  if (isStart) {
+                    startDate = picked;
+                    if (startDate.isAfter(endDate)) endDate = startDate;
+                  } else {
+                    endDate = picked;
+                    if (endDate.isBefore(startDate)) startDate = endDate;
+                  }
+                });
+              }
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(28, 12, 28, 36),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ── Drag Handle ──
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: onSurface.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.date_range_rounded,
+                        color: onSurface,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'เลือกช่วงเวลา',
+                        style: GoogleFonts.anuphan(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Start Date ──
+                  Text(
+                    'ตั้งแต่วันที่',
+                    style: GoogleFonts.anuphan(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => pickDate(isStart: true),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: onSurface.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: onSurface.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 18,
+                            color: brandNavy,
+                          ),
+                          const SizedBox(width: 14),
+                          Text(
+                            DateFormat('dd MMMM yyyy', 'th').format(startDate),
+                            style: GoogleFonts.anuphan(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.edit_calendar_rounded,
+                            size: 18,
+                            color: onSurface.withValues(alpha: 0.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // ── End Date ──
+                  Text(
+                    'ถึงวันที่',
+                    style: GoogleFonts.anuphan(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: onSurface.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => pickDate(isStart: false),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 18,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: onSurface.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: onSurface.withValues(alpha: 0.08),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today_rounded,
+                            size: 18,
+                            color: brandNavy,
+                          ),
+                          const SizedBox(width: 14),
+                          Text(
+                            DateFormat('dd MMMM yyyy', 'th').format(endDate),
+                            style: GoogleFonts.anuphan(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.edit_calendar_rounded,
+                            size: 18,
+                            color: onSurface.withValues(alpha: 0.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // ── Buttons ──
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'ยกเลิก',
+                            style: GoogleFonts.anuphan(
+                              fontWeight: FontWeight.w700,
+                              color: onSurface.withValues(alpha: 0.5),
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final adjustedEnd = DateTime(
+                              endDate.year,
+                              endDate.month,
+                              endDate.day,
+                              23,
+                              59,
+                              59,
+                            );
+                            provider.setFilter(startDate, adjustedEnd);
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 4,
+                            shadowColor: brandNavy.withValues(alpha: 0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: Text(
+                            'ยืนยัน',
+                            style: GoogleFonts.anuphan(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
         );
       },
     );
-    if (picked != null) provider.setFilter(picked.start, picked.end);
   }
 
-  void _showAddDialog(BuildContext context) {
-    showDialog(context: context, builder: (_) => const AddIncomeDialog());
+  void _showIncomeForm(BuildContext context, {IncomeEntry? entry}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddIncomeDialog(entry: entry),
+    );
   }
 }

@@ -87,4 +87,18 @@ class DatabaseHelper {
       }
     });
   }
+
+  Future<void> markAsUnpaid(List<int> ids) async {
+    Database db = await database;
+    await db.transaction((txn) async {
+      for (var id in ids) {
+        await txn.update(
+          'incomes',
+          {'isPaid': 0},
+          where: 'id = ?',
+          whereArgs: [id],
+        );
+      }
+    });
+  }
 }

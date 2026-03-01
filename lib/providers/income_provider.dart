@@ -55,6 +55,11 @@ class IncomeProvider with ChangeNotifier {
     await loadIncomes();
   }
 
+  Future<void> markSelectedAsUnpaid(List<int> ids) async {
+    await DatabaseHelper().markAsUnpaid(ids);
+    await loadIncomes();
+  }
+
   Future<void> deleteIncome(int id) async {
     await DatabaseHelper().deleteIncome(id);
     await loadIncomes();

@@ -36,137 +36,161 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      backgroundColor: surface,
-      surfaceTintColor: Colors.transparent,
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.entry == null ? 'เพิ่มรายการใหม่' : 'แก้ไขรายการ',
-              style: GoogleFonts.anuphan(
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                color: onSurface,
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            _buildLabel('จำนวนเงิน (฿)'),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _amountController,
-              decoration: _inputDecoration('0.00'),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              style: GoogleFonts.anuphan(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: onSurface,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildLabel('บันทึกช่วยจำ'),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _noteController,
-              decoration: _inputDecoration('ระบุรายละเอียด...'),
-              style: GoogleFonts.anuphan(
-                fontSize: 16,
-                color: onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            _buildLabel('วันที่'),
-            const SizedBox(height: 10),
-            InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 18,
-                  horizontal: 20,
+    return Container(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(32, 12, 32, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Drag Handle ──
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: onSurface.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: onSurface.withValues(alpha: 0.05)),
+              ),
+
+              Text(
+                widget.entry == null ? 'เพิ่มรายการใหม่' : 'แก้ไขรายการ',
+                style: GoogleFonts.anuphan(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  color: onSurface,
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 18,
-                      color: onSurface,
+              ),
+              const SizedBox(height: 32),
+
+              _buildLabel('จำนวนเงิน (฿)'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _amountController,
+                autofocus: widget.entry == null,
+                decoration: _inputDecoration('0.00'),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: GoogleFonts.anuphan(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              _buildLabel('บันทึกช่วยจำ'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _noteController,
+                decoration: _inputDecoration('ระบุรายละเอียด...'),
+                style: GoogleFonts.anuphan(
+                  fontSize: 16,
+                  color: onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              _buildLabel('วันที่'),
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: _pickDate,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 18,
+                    horizontal: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: onSurface.withValues(alpha: 0.05),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      DateFormat('dd MMMM yyyy').format(_selectedDate),
-                      style: GoogleFonts.anuphan(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 18,
                         color: onSurface,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat('dd MMMM yyyy', 'th').format(_selectedDate),
+                        style: GoogleFonts.anuphan(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
+              const SizedBox(height: 40),
 
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'ยกเลิก',
-                      style: GoogleFonts.anuphan(
-                        fontWeight: FontWeight.w700,
-                        color: onSurface.withValues(alpha: 0.6),
-                        fontSize: 15,
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'ยกเลิก',
+                        style: GoogleFonts.anuphan(
+                          fontWeight: FontWeight.w700,
+                          color: onSurface.withValues(alpha: 0.6),
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      elevation: 4,
-                      shadowColor:
-                          (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.black
-                          : brandNavy.withValues(alpha: 0.3)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        elevation: 4,
+                        shadowColor:
+                            (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : brandNavy.withValues(alpha: 0.3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'บันทึก',
-                      style: GoogleFonts.anuphan(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
+                      child: Text(
+                        'บันทึก',
+                        style: GoogleFonts.anuphan(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
