@@ -271,7 +271,8 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
     if (amount == null || amount <= 0) return;
 
     final provider = Provider.of<IncomeProvider>(context, listen: false);
-    if (widget.entry == null) {
+    final isNew = widget.entry == null;
+    if (isNew) {
       provider.addIncome(
         amount,
         _noteController.text.isEmpty ? 'ค่าตอบแทน' : _noteController.text,
@@ -286,5 +287,114 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
       provider.updateIncome(updated);
     }
     Navigator.pop(context);
+
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (_) => _SaveToast(
+        message: isNew ? 'เพิ่มรายการสำเร็จ' : 'แก้ไขรายการสำเร็จ',
+        onDismiss: () => entry.remove(),
+      ),
+    );
+    overlay.insert(entry);
+  }
+}
+
+class _SaveToast extends StatefulWidget {
+  final String message;
+  final VoidCallback onDismiss;
+  const _SaveToast({required this.message, required this.onDismiss});
+
+  @override
+  State<_SaveToast> createState() => _SaveToastState();
+}
+
+class _SaveToastState extends State<_SaveToast>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      reverseDuration: const Duration(milliseconds: 300),
+    );
+    _ctrl.forward();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted)
+        _ctrl.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: 16,
+      right: 16,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, -1),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic)),
+        child: FadeTransition(
+          opacity: Tween<double>(begin: 0, end: 1).animate(_ctrl),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4CAF50),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      widget.message,
+                      style: GoogleFonts.anuphan(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

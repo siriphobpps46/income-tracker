@@ -290,6 +290,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   onConfirm: () {
                     final ids = items.map((e) => e.id!).toList();
                     provider.markSelectedAsPaid(ids);
+                    _showSuccessSnackBar(
+                      'ทำเครื่องหมายรับเงินแล้วทั้งหมดสำเร็จ',
+                    );
                   },
                 );
               },
@@ -319,6 +322,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   onConfirm: () {
                     final ids = items.map((e) => e.id!).toList();
                     provider.markSelectedAsUnpaid(ids);
+                    _showSuccessSnackBar(
+                      'ยกเลิกการรับทั้งหมดสำเร็จ',
+                      icon: Icons.undo_rounded,
+                      color: softAmber,
+                    );
                   },
                 );
               },
@@ -469,12 +477,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             );
-            if (result == true) provider.deleteIncome(entry.id!);
+            if (result == true) {
+              provider.deleteIncome(entry.id!);
+              _showSuccessSnackBar(
+                'ลบรายการสำเร็จ',
+                icon: Icons.delete_rounded,
+                color: softRed,
+              );
+            }
             return false; // don't auto-remove, provider handles it
           } else {
             // Swipe right → Toggle paid
             HapticFeedback.lightImpact();
             provider.togglePaidStatus(entry);
+            _showSuccessSnackBar(
+              entry.isPaid ? 'เปลี่ยนเป็นค้างรับสำเร็จ' : 'รับเงินแล้วสำเร็จ',
+              icon: entry.isPaid
+                  ? Icons.undo_rounded
+                  : Icons.check_circle_rounded,
+              color: entry.isPaid ? softAmber : softGreen,
+            );
             return false;
           }
         },
@@ -608,7 +630,18 @@ class _HomeScreenState extends State<HomeScreen> {
                             : 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "รับเงินแล้ว" ใช่หรือไม่?',
                         confirmLabel: 'ตกลง',
                         confirmColor: entry.isPaid ? softAmber : softGreen,
-                        onConfirm: () => provider.togglePaidStatus(entry),
+                        onConfirm: () {
+                          provider.togglePaidStatus(entry);
+                          _showSuccessSnackBar(
+                            entry.isPaid
+                                ? 'เปลี่ยนเป็นค้างรับสำเร็จ'
+                                : 'รับเงินแล้วสำเร็จ',
+                            icon: entry.isPaid
+                                ? Icons.undo_rounded
+                                : Icons.check_circle_rounded,
+                            color: entry.isPaid ? softAmber : softGreen,
+                          );
+                        },
                       );
                     } else if (val == 'delete') {
                       HapticFeedback.mediumImpact();
@@ -618,7 +651,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         message: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
                         confirmLabel: 'ลบ',
                         confirmColor: softRed,
-                        onConfirm: () => provider.deleteIncome(entry.id!),
+                        onConfirm: () {
+                          provider.deleteIncome(entry.id!);
+                          _showSuccessSnackBar(
+                            'ลบรายการสำเร็จ',
+                            icon: Icons.delete_rounded,
+                            color: softRed,
+                          );
+                        },
                       );
                     }
                   },
@@ -669,6 +709,29 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  // ═══════════════════════════════════════
+  // Success Toast (Top Overlay)
+  // ═══════════════════════════════════════
+  void _showSuccessSnackBar(
+    String message, {
+    IconData icon = Icons.check_circle_rounded,
+    Color color = const Color(0xFF4CAF50),
+  }) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (context) => _TopToast(
+        message: message,
+        icon: icon,
+        color: color,
+        onDismiss: () => entry.remove(),
+      ),
+    );
+
+    overlay.insert(entry);
   }
 
   // ═══════════════════════════════════════
@@ -1221,6 +1284,121 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddIncomeDialog(entry: entry),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════
+// Top Toast Widget
+// ═══════════════════════════════════════════════
+class _TopToast extends StatefulWidget {
+  final String message;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onDismiss;
+
+  const _TopToast({
+    required this.message,
+    required this.icon,
+    required this.color,
+    required this.onDismiss,
+  });
+
+  @override
+  State<_TopToast> createState() => _TopToastState();
+}
+
+class _TopToastState extends State<_TopToast>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+      reverseDuration: const Duration(milliseconds: 300),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, -1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: 16,
+      right: 16,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: widget.color,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(widget.icon, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      widget.message,
+                      style: GoogleFonts.anuphan(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
