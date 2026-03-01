@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -87,16 +88,24 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: filteredIncomes.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
-                        itemCount: filteredIncomes.length,
-                        itemBuilder: (context, index) {
-                          return _buildIncomeTile(
-                            context,
-                            filteredIncomes[index],
-                            provider,
-                          );
-                        },
+                    : RefreshIndicator(
+                        onRefresh: () => provider.loadIncomes(),
+                        color: brandNavy,
+                        child: ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(
+                            parent: BouncingScrollPhysics(),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                          itemCount: filteredIncomes.length,
+                          itemBuilder: (context, index) {
+                            return _buildIncomeTile(
+                              context,
+                              filteredIncomes[index],
+                              provider,
+                              index,
+                            );
+                          },
+                        ),
                       ),
               ),
             ],
@@ -107,7 +116,10 @@ class _HomeScreenState extends State<HomeScreen> {
       floatingActionButton: Transform.translate(
         offset: const Offset(0, 18),
         child: FloatingActionButton(
-          onPressed: () => _showIncomeForm(context),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _showIncomeForm(context);
+          },
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           elevation: 6,
@@ -382,113 +394,258 @@ class _HomeScreenState extends State<HomeScreen> {
     BuildContext context,
     IncomeEntry entry,
     IncomeProvider provider,
+    int index,
   ) {
     final statusColor = entry.isPaid ? softGreen : softAmber;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 0, 0, 16),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 350 + (index * 60)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: statusColor, width: 5)),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
-            title: Text(
-              '฿${NumberFormat('#,###.00').format(entry.amount)}',
-              style: GoogleFonts.anuphan(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: onSurface,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  entry.note,
+        );
+      },
+      child: Dismissible(
+        key: Key('income_${entry.id}'),
+        confirmDismiss: (direction) async {
+          if (direction == DismissDirection.endToStart) {
+            // Swipe left → Delete
+            HapticFeedback.mediumImpact();
+            bool? result;
+            await showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: surface,
+                surfaceTintColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                title: Text(
+                  'ยืนยันการลบ',
                   style: GoogleFonts.anuphan(
-                    fontSize: 14,
-                    color: onSurface.withValues(alpha: 0.7),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w700,
+                    color: onSurface,
                   ),
                 ),
-                Text(
-                  DateFormat('dd MMM yyyy', 'th').format(entry.date),
+                content: Text(
+                  'คุณต้องการลบรายการนี้ใช่หรือไม่?',
                   style: GoogleFonts.anuphan(
-                    fontSize: 12,
+                    color: onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      result = false;
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      'ยกเลิก',
+                      style: GoogleFonts.anuphan(
+                        color: onSurface.withValues(alpha: 0.6),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      result = true;
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      'ลบ',
+                      style: GoogleFonts.anuphan(
+                        color: softRed,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+            if (result == true) provider.deleteIncome(entry.id!);
+            return false; // don't auto-remove, provider handles it
+          } else {
+            // Swipe right → Toggle paid
+            HapticFeedback.lightImpact();
+            provider.togglePaidStatus(entry);
+            return false;
+          }
+        },
+        background: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: entry.isPaid ? softAmber : softGreen,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            children: [
+              Icon(
+                entry.isPaid ? Icons.undo_rounded : Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                entry.isPaid ? 'ยกเลิกการรับ' : 'รับเงินแล้ว',
+                style: GoogleFonts.anuphan(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+        secondaryBackground: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            color: softRed,
+            borderRadius: BorderRadius.circular(22),
+          ),
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(
+                'ลบ',
+                style: GoogleFonts.anuphan(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(
+                Icons.delete_outline_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(0, 0, 0, 16),
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: statusColor, width: 5)),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+                title: Text(
+                  '฿${NumberFormat('#,###.00').format(entry.amount)}',
+                  style: GoogleFonts.anuphan(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                    color: onSurface,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.note,
+                      style: GoogleFonts.anuphan(
+                        fontSize: 14,
+                        color: onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('dd MMM yyyy', 'th').format(entry.date),
+                      style: GoogleFonts.anuphan(
+                        fontSize: 12,
+                        color: onSurface.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert_rounded,
                     color: onSurface.withValues(alpha: 0.4),
                   ),
+                  color: surface,
+                  surfaceTintColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  onSelected: (val) {
+                    if (val == 'edit') {
+                      _showIncomeForm(context, entry: entry);
+                    } else if (val == 'paid') {
+                      HapticFeedback.lightImpact();
+                      _showActionConfirmDialog(
+                        context: context,
+                        title: entry.isPaid
+                            ? 'ยกเลิกการรับเงิน'
+                            : 'ยืนยันการรับเงิน',
+                        message: entry.isPaid
+                            ? 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "ค้างรับ" ใช่หรือไม่?'
+                            : 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "รับเงินแล้ว" ใช่หรือไม่?',
+                        confirmLabel: 'ตกลง',
+                        confirmColor: entry.isPaid ? softAmber : softGreen,
+                        onConfirm: () => provider.togglePaidStatus(entry),
+                      );
+                    } else if (val == 'delete') {
+                      HapticFeedback.mediumImpact();
+                      _showActionConfirmDialog(
+                        context: context,
+                        title: 'ยืนยันการลบ',
+                        message: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
+                        confirmLabel: 'ลบ',
+                        confirmColor: softRed,
+                        onConfirm: () => provider.deleteIncome(entry.id!),
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    _buildMenuItem(
+                      'paid',
+                      entry.isPaid
+                          ? Icons.undo_rounded
+                          : Icons.check_circle_rounded,
+                      entry.isPaid ? 'ยกเลิกการรับ' : 'รับเงินแล้ว',
+                      entry.isPaid ? softAmber : softGreen,
+                    ),
+                    _buildMenuItem(
+                      'edit',
+                      Icons.edit_rounded,
+                      'แก้ไข',
+                      softBlue,
+                    ),
+                    _buildMenuItem(
+                      'delete',
+                      Icons.delete_outline_rounded,
+                      'ลบรายการ',
+                      softRed,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            trailing: PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert_rounded,
-                color: onSurface.withValues(alpha: 0.4),
               ),
-              color: surface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              onSelected: (val) {
-                if (val == 'edit') {
-                  _showIncomeForm(context, entry: entry);
-                } else if (val == 'paid') {
-                  _showActionConfirmDialog(
-                    context: context,
-                    title: entry.isPaid
-                        ? 'ยกเลิกการรับเงิน'
-                        : 'ยืนยันการรับเงิน',
-                    message: entry.isPaid
-                        ? 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "ค้างรับ" ใช่หรือไม่?'
-                        : 'ต้องการเปลี่ยนสถานะรายการนี้เป็น "รับเงินแล้ว" ใช่หรือไม่?',
-                    confirmLabel: 'ตกลง',
-                    confirmColor: entry.isPaid ? softAmber : softGreen,
-                    onConfirm: () => provider.togglePaidStatus(entry),
-                  );
-                } else if (val == 'delete') {
-                  _showActionConfirmDialog(
-                    context: context,
-                    title: 'ยืนยันการลบ',
-                    message: 'คุณต้องการลบรายการนี้ใช่หรือไม่?',
-                    confirmLabel: 'ลบ',
-                    confirmColor: softRed,
-                    onConfirm: () => provider.deleteIncome(entry.id!),
-                  );
-                }
-              },
-              itemBuilder: (context) => [
-                _buildMenuItem(
-                  'paid',
-                  entry.isPaid
-                      ? Icons.undo_rounded
-                      : Icons.check_circle_rounded,
-                  entry.isPaid ? 'ยกเลิกการรับ' : 'รับเงินแล้ว',
-                  entry.isPaid ? softAmber : softGreen,
-                ),
-                _buildMenuItem('edit', Icons.edit_rounded, 'แก้ไข', softBlue),
-                _buildMenuItem(
-                  'delete',
-                  Icons.delete_outline_rounded,
-                  'ลบรายการ',
-                  softRed,
-                ),
-              ],
             ),
           ),
         ),
