@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'providers/income_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/welcome_screen.dart';
 
 void main() {
@@ -9,6 +10,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => IncomeProvider()..loadIncomes()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const MyApp(),
     ),
@@ -18,56 +20,114 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // ── 3-Tone Palette ──
-  static const Color deepNavy = Color(0xFF0A1128);
-  static const Color darkGray = Color(0xFF1E2A3A);
-  static const Color pureWhite = Color(0xFFFFFFFF);
+  // ── Light Luxury Palette ──
+  static const Color background = Color(0xFFF8FAFC); // ขาวนวล Slate
+  static const Color surface = Color(0xFFFFFFFF); // ขาวสะอาด
+  static const Color primaryNavy = Color(
+    0xFF0F172A,
+  ); // กรมเข้ม (สำหรับตัวหนังสือและปุ่ม)
+  static const Color slateGray = Color(
+    0xFF64748B,
+  ); // เทา Slate (สำหรับตัวหนังสือรอง)
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Income Tracker',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: deepNavy,
-        colorScheme: ColorScheme.dark(
-          primary: pureWhite,
-          secondary: pureWhite,
-          surface: darkGray,
-          onPrimary: deepNavy,
-          onSecondary: deepNavy,
-          onSurface: pureWhite,
-        ),
-        textTheme: GoogleFonts.anuphanTextTheme(ThemeData.dark().textTheme),
-        appBarTheme: AppBarTheme(
-          backgroundColor: deepNavy,
-          foregroundColor: pureWhite,
-          elevation: 0,
-          centerTitle: true,
-          titleTextStyle: GoogleFonts.anuphan(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: pureWhite,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: pureWhite,
-            foregroundColor: deepNavy,
-            textStyle: GoogleFonts.anuphan(
-              fontWeight: FontWeight.w700,
-              fontSize: 16,
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Income Tracker',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeProvider.isDarkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          theme: ThemeData(
+            useMaterial3: true,
+            scaffoldBackgroundColor: background,
+            colorScheme: ColorScheme.light(
+              primary: primaryNavy,
+              secondary: primaryNavy,
+              surface: surface,
+              onPrimary: Colors.white,
+              onSurface: primaryNavy,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+            textTheme: GoogleFonts.anuphanTextTheme(
+              ThemeData.light().textTheme,
             ),
-            elevation: 0,
+            appBarTheme: AppBarTheme(
+              backgroundColor: background,
+              foregroundColor: primaryNavy,
+              elevation: 0,
+              centerTitle: true,
+              titleTextStyle: GoogleFonts.anuphan(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: primaryNavy,
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryNavy,
+                foregroundColor: Colors.white,
+                textStyle: GoogleFonts.anuphan(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                elevation: 2,
+                shadowColor: primaryNavy.withValues(alpha: 0.3),
+              ),
+            ),
           ),
-        ),
-      ),
-      home: const WelcomeScreen(),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor: primaryNavy,
+            colorScheme: ColorScheme.dark(
+              primary: Colors.white,
+              secondary: Colors.white,
+              surface: const Color(0xFF1E293B), // Slate 800
+              onPrimary: primaryNavy,
+              onSurface: Colors.white,
+            ),
+            textTheme: GoogleFonts.anuphanTextTheme(ThemeData.dark().textTheme),
+            appBarTheme: AppBarTheme(
+              backgroundColor: primaryNavy,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+              titleTextStyle: GoogleFonts.anuphan(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryNavy,
+                textStyle: GoogleFonts.anuphan(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+          home: const WelcomeScreen(),
+        );
+      },
     );
   }
 }

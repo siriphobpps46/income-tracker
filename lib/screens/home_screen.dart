@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/income_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/add_income_dialog.dart';
 import '../models/income_entry.dart';
 
@@ -16,39 +17,52 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  // ── 3-Tone Palette ──
-  static const Color deepNavy = Color(0xFF0A1128);
-  static const Color darkGray = Color(0xFF1E2A3A);
-  static const Color pureWhite = Color(0xFFFFFFFF);
+  // ── Palette Accessors ──
+  Color get background => Theme.of(context).scaffoldBackgroundColor;
+  Color get onSurface => Theme.of(context).colorScheme.onSurface;
+  Color get surface => Theme.of(context).colorScheme.surface;
+  static const Color brandNavy = Color(0xFF0F172A);
+  static const Color slateGray = Color(0xFF64748B);
 
-  // ── Icon-only vivid colors ──
-  static const Color iconPending = Color(0xFFFF6B6B); // สด - ค้างรับ
-  static const Color iconReceived = Color(0xFF69F0AE); // สด - ได้รับแล้ว
-  static const Color iconCalendar = Color(0xFFFFD740); // สด - ปฏิทิน
-  static const Color iconEdit = Color(0xFF42A5F5); // สด - แก้ไข
+  // ── Soft Status Colors ──
+  static const Color softRed = Color(0xFFEF4444);
+  static const Color softGreen = Color(0xFF10B981);
+  static const Color softAmber = Color(0xFFF59E0B);
+  static const Color softBlue = Color(0xFF3B82F6);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepNavy,
+      backgroundColor: background,
       appBar: AppBar(
-        backgroundColor: deepNavy,
+        backgroundColor: background,
+        surfaceTintColor: Colors.transparent,
         title: Text(
           'INCOME TRACKER',
           style: GoogleFonts.anuphan(
             fontWeight: FontWeight.w800,
             letterSpacing: 2,
             fontSize: 18,
-            color: pureWhite,
+            color: onSurface,
           ),
         ),
         actions: [
+          Consumer<ThemeProvider>(
+            builder: (context, themeProvider, child) {
+              return IconButton(
+                icon: Icon(
+                  themeProvider.isDarkMode
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
+                  color: onSurface,
+                  size: 22,
+                ),
+                onPressed: () => themeProvider.toggleTheme(),
+              );
+            },
+          ),
           IconButton(
-            icon: const Icon(
-              Icons.calendar_today_rounded,
-              color: iconCalendar,
-              size: 20,
-            ),
+            icon: Icon(Icons.date_range_rounded, color: onSurface, size: 22),
             onPressed: () => _selectDateRange(context),
           ),
           const SizedBox(width: 8),
@@ -57,9 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Consumer<IncomeProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: pureWhite),
-            );
+            return Center(child: CircularProgressIndicator(color: onSurface));
           }
 
           final filteredIncomes = provider.incomes.where((e) {
@@ -69,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           return Column(
             children: [
-              _buildSummaryCard(provider),
+              _buildModernSummaryCard(provider),
               _buildActiveFilters(context, provider),
               _buildSectionHeader(filteredIncomes, provider),
               Expanded(
@@ -92,65 +104,85 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(context),
-        backgroundColor: pureWhite,
-        foregroundColor: deepNavy,
-        elevation: 0,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add_rounded, size: 32),
+      floatingActionButton: Transform.translate(
+        offset: const Offset(0, 18),
+        child: FloatingActionButton(
+          onPressed: () => _showAddDialog(context),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+          elevation: 6,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(Icons.add_rounded, size: 32),
+        ),
       ),
-      bottomNavigationBar: _buildDock(),
+      bottomNavigationBar: _buildModernDock(),
     );
   }
 
   // ═══════════════════════════════════════
-  // Summary Card
+  // Summary Card — Navy focal point with white text
   // ═══════════════════════════════════════
-  Widget _buildSummaryCard(IncomeProvider provider) {
+  Widget _buildModernSummaryCard(IncomeProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? Colors.white : brandNavy;
+    final cardTitleColor = isDark ? brandNavy : Colors.white;
+    final cardSubtitleColor = isDark
+        ? brandNavy.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.6);
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: darkGray,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: pureWhite.withValues(alpha: 0.06)),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.1 : 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'ยอดรวมทั้งหมด',
+            'ยอดรวมรายได้ทั้งหมด',
             style: GoogleFonts.anuphan(
-              color: pureWhite.withValues(alpha: 0.4),
+              color: cardSubtitleColor,
               fontWeight: FontWeight.w600,
-              fontSize: 13,
+              fontSize: 14,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             '฿${NumberFormat('#,###.00').format(provider.totalUnpaid + provider.totalPaid)}',
             style: GoogleFonts.anuphan(
-              color: pureWhite,
+              color: cardTitleColor,
               fontWeight: FontWeight.w800,
-              fontSize: 34,
+              fontSize: 36,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Row(
             children: [
               _buildMiniStat(
                 'ค้างรับ',
                 provider.totalUnpaid,
-                iconPending,
+                softRed,
                 Icons.arrow_downward_rounded,
+                isDark,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               _buildMiniStat(
-                'ได้รับแล้ว',
+                'รับแล้ว',
                 provider.totalPaid,
-                iconReceived,
+                softGreen,
                 Icons.arrow_upward_rounded,
+                isDark,
               ),
             ],
           ),
@@ -164,40 +196,51 @@ class _HomeScreenState extends State<HomeScreen> {
     double amount,
     Color iconColor,
     IconData icon,
+    bool isDark,
   ) {
+    final statBg = isDark
+        ? brandNavy.withValues(alpha: 0.05)
+        : Colors.white.withValues(alpha: 0.1);
+    final statBorder = isDark
+        ? brandNavy.withValues(alpha: 0.05)
+        : Colors.white.withValues(alpha: 0.05);
+    final statLabelColor = isDark
+        ? brandNavy.withValues(alpha: 0.5)
+        : Colors.white.withValues(alpha: 0.5);
+    final statAmountColor = isDark ? brandNavy : Colors.white;
+
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: deepNavy,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: pureWhite.withValues(alpha: 0.06)),
+          color: statBg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: statBorder),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: iconColor, size: 16),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: GoogleFonts.anuphan(
-                      color: pureWhite.withValues(alpha: 0.4),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.anuphan(
+                    color: statLabelColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
-                  Text(
-                    '฿${NumberFormat('#,###').format(amount)}',
-                    style: GoogleFonts.anuphan(
-                      color: pureWhite,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '฿${NumberFormat('#,###').format(amount)}',
+              style: GoogleFonts.anuphan(
+                color: statAmountColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 17,
               ),
             ),
           ],
@@ -211,30 +254,34 @@ class _HomeScreenState extends State<HomeScreen> {
   // ═══════════════════════════════════════
   Widget _buildSectionHeader(List<IncomeEntry> items, IncomeProvider provider) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
         children: [
           Text(
             _selectedIndex == 0 ? 'รายการค้างรับ' : 'ประวัติการรับเงิน',
             style: GoogleFonts.anuphan(
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: pureWhite.withValues(alpha: 0.35),
+              color: onSurface,
             ),
           ),
           const Spacer(),
           if (_selectedIndex == 0 && items.isNotEmpty)
-            GestureDetector(
-              onTap: () {
+            TextButton(
+              onPressed: () {
                 final ids = items.map((e) => e.id!).toList();
                 provider.markSelectedAsPaid(ids);
               },
+              style: TextButton.styleFrom(
+                foregroundColor: softGreen,
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: Text(
                 'รับทั้งหมดแล้ว',
                 style: GoogleFonts.anuphan(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: pureWhite.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -244,40 +291,44 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ═══════════════════════════════════════
-  // Filters
+  // Active Filters
   // ═══════════════════════════════════════
   Widget _buildActiveFilters(BuildContext context, IncomeProvider provider) {
     if (provider.startDate == null) return const SizedBox.shrink();
     final df = DateFormat('dd MMM yyyy');
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: darkGray,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: pureWhite.withValues(alpha: 0.06)),
+          color: surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: onSurface.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.date_range_rounded, size: 16, color: iconCalendar),
-            const SizedBox(width: 8),
+            const Icon(
+              Icons.calendar_today_rounded,
+              size: 18,
+              color: softAmber,
+            ),
+            const SizedBox(width: 10),
             Text(
               '${df.format(provider.startDate!)} – ${df.format(provider.endDate!)}',
               style: GoogleFonts.anuphan(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: pureWhite.withValues(alpha: 0.6),
+                color: onSurface,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             GestureDetector(
               onTap: () => provider.setFilter(null, null),
               child: Icon(
-                Icons.close_rounded,
-                size: 16,
-                color: pureWhite.withValues(alpha: 0.3),
+                Icons.cancel_rounded,
+                size: 18,
+                color: onSurface.withValues(alpha: 0.4),
               ),
             ),
           ],
@@ -287,128 +338,125 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ═══════════════════════════════════════
-  // Income Tile
+  // Income Tile — Pure white with subtle shadow
   // ═══════════════════════════════════════
   Widget _buildIncomeTile(
     BuildContext context,
     IncomeEntry entry,
     IncomeProvider provider,
   ) {
-    final Color statusIconColor = entry.isPaid ? iconReceived : iconPending;
+    final statusColor = entry.isPaid ? softGreen : softAmber;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.fromLTRB(0, 0, 0, 16),
       decoration: BoxDecoration(
-        color: darkGray,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: pureWhite.withValues(alpha: 0.04)),
+        color: surface,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 10,
-        ),
-        leading: Icon(
-          entry.isPaid ? Icons.check_circle_rounded : Icons.schedule_rounded,
-          color: statusIconColor,
-          size: 28,
-        ),
-        title: Text(
-          '฿${NumberFormat('#,###.00').format(entry.amount)}',
-          style: GoogleFonts.anuphan(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: pureWhite,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: statusColor, width: 5)),
           ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              entry.note,
+          child: ListTile(
+            contentPadding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+            title: Text(
+              '฿${NumberFormat('#,###.00').format(entry.amount)}',
               style: GoogleFonts.anuphan(
-                fontSize: 12,
-                color: pureWhite.withValues(alpha: 0.4),
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                color: onSurface,
               ),
             ),
-            Text(
-              DateFormat('dd MMM yyyy').format(entry.date),
-              style: GoogleFonts.anuphan(
-                fontSize: 11,
-                color: pureWhite.withValues(alpha: 0.2),
-              ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  entry.note,
+                  style: GoogleFonts.anuphan(
+                    fontSize: 14,
+                    color: onSurface.withValues(alpha: 0.7),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  DateFormat('dd MMM yyyy').format(entry.date),
+                  style: GoogleFonts.anuphan(
+                    fontSize: 12,
+                    color: onSurface.withValues(alpha: 0.4),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          icon: Icon(
-            Icons.more_horiz_rounded,
-            color: pureWhite.withValues(alpha: 0.25),
+            trailing: PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: onSurface.withValues(alpha: 0.4),
+              ),
+              color: surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              onSelected: (val) {
+                if (val == 'edit') {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AddIncomeDialog(entry: entry),
+                  );
+                } else if (val == 'paid') {
+                  provider.togglePaidStatus(entry);
+                } else if (val == 'delete') {
+                  _confirmDelete(context, entry, provider);
+                }
+              },
+              itemBuilder: (context) => [
+                _buildMenuItem(
+                  'paid',
+                  entry.isPaid
+                      ? Icons.undo_rounded
+                      : Icons.check_circle_rounded,
+                  entry.isPaid ? 'ยกเลิกการรับ' : 'รับเงินแล้ว',
+                  entry.isPaid ? softAmber : softGreen,
+                ),
+                _buildMenuItem('edit', Icons.edit_rounded, 'แก้ไข', softBlue),
+                _buildMenuItem(
+                  'delete',
+                  Icons.delete_outline_rounded,
+                  'ลบรายการ',
+                  softRed,
+                ),
+              ],
+            ),
           ),
-          color: darkGray,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          onSelected: (val) {
-            if (val == 'edit') {
-              showDialog(
-                context: context,
-                builder: (_) => AddIncomeDialog(entry: entry),
-              );
-            } else if (val == 'paid') {
-              provider.togglePaidStatus(entry);
-            } else if (val == 'delete') {
-              _confirmDelete(context, entry, provider);
-            }
-          },
-          itemBuilder: (context) => [
-            PopupMenuItem(
-              value: 'paid',
-              child: Row(
-                children: [
-                  Icon(
-                    entry.isPaid ? Icons.undo_rounded : Icons.verified_rounded,
-                    size: 18,
-                    color: entry.isPaid ? iconCalendar : iconReceived,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    entry.isPaid ? 'ยกเลิกการรับ' : 'รับเงินแล้ว',
-                    style: GoogleFonts.anuphan(color: pureWhite),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  const Icon(Icons.edit_rounded, size: 18, color: iconEdit),
-                  const SizedBox(width: 12),
-                  Text('แก้ไข', style: GoogleFonts.anuphan(color: pureWhite)),
-                ],
-              ),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.delete_outline_rounded,
-                    size: 18,
-                    color: iconPending,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'ลบรายการ',
-                    style: GoogleFonts.anuphan(color: iconPending),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildMenuItem(
+    String value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 12),
+          Text(label, style: GoogleFonts.anuphan(color: onSurface)),
+        ],
       ),
     );
   }
@@ -416,21 +464,21 @@ class _HomeScreenState extends State<HomeScreen> {
   // ═══════════════════════════════════════
   // Bottom Dock
   // ═══════════════════════════════════════
-  Widget _buildDock() {
+  Widget _buildModernDock() {
     return Container(
-      height: 80,
+      height: 90,
       decoration: BoxDecoration(
-        color: darkGray,
+        color: surface,
         border: Border(
-          top: BorderSide(color: pureWhite.withValues(alpha: 0.06)),
+          top: BorderSide(color: onSurface.withValues(alpha: 0.05)),
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildDockItem(0, Icons.grid_view_rounded, 'หน้าหลัก'),
+          _buildDockItem(0, Icons.speed_rounded, 'หน้าหลัก'),
           const SizedBox(width: 50),
-          _buildDockItem(1, Icons.history_rounded, 'ประวัติ'),
+          _buildDockItem(1, Icons.assignment_rounded, 'ประวัติ'),
         ],
       ),
     );
@@ -448,18 +496,24 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Icon(
               icon,
-              color: isSelected ? pureWhite : pureWhite.withValues(alpha: 0.2),
-              size: 24,
+              color: isSelected
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white
+                        : brandNavy)
+                  : slateGray.withValues(alpha: 0.3),
+              size: 26,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               label,
               style: GoogleFonts.anuphan(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
                 color: isSelected
-                    ? pureWhite
-                    : pureWhite.withValues(alpha: 0.2),
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : brandNavy)
+                    : slateGray.withValues(alpha: 0.3),
               ),
             ),
           ],
@@ -477,16 +531,16 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.inbox_rounded,
-            size: 56,
-            color: pureWhite.withValues(alpha: 0.08),
+            Icons.inbox_outlined,
+            size: 64,
+            color: onSurface.withValues(alpha: 0.15),
           ),
           const SizedBox(height: 16),
           Text(
             'ยังไม่มีรายการในขณะนี้',
             style: GoogleFonts.anuphan(
-              color: pureWhite.withValues(alpha: 0.25),
-              fontWeight: FontWeight.w500,
+              color: onSurface.withValues(alpha: 0.4),
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -495,7 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ═══════════════════════════════════════
-  // Confirm Delete
+  // Confirm Delete Dialog
   // ═══════════════════════════════════════
   void _confirmDelete(
     BuildContext context,
@@ -505,18 +559,19 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: darkGray,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'ยืนยันการลบ',
           style: GoogleFonts.anuphan(
             fontWeight: FontWeight.w700,
-            color: pureWhite,
+            color: onSurface,
           ),
         ),
         content: Text(
           'คุณต้องการลบรายการนี้ใช่หรือไม่?',
-          style: GoogleFonts.anuphan(color: pureWhite.withValues(alpha: 0.6)),
+          style: GoogleFonts.anuphan(color: onSurface.withValues(alpha: 0.7)),
         ),
         actions: [
           TextButton(
@@ -524,7 +579,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'ยกเลิก',
               style: GoogleFonts.anuphan(
-                color: pureWhite.withValues(alpha: 0.4),
+                color: onSurface.withValues(alpha: 0.6),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -536,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'ลบ',
               style: GoogleFonts.anuphan(
-                color: iconPending,
+                color: softRed,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -546,9 +602,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ═══════════════════════════════════════
-  // Date Range Picker
-  // ═══════════════════════════════════════
   Future<void> _selectDateRange(BuildContext context) async {
     final provider = Provider.of<IncomeProvider>(context, listen: false);
     final picked = await showDateRangePicker(
@@ -558,6 +611,23 @@ class _HomeScreenState extends State<HomeScreen> {
       initialDateRange: provider.startDate != null
           ? DateTimeRange(start: provider.startDate!, end: provider.endDate!)
           : null,
+      builder: (context, child) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDark
+                ? Theme.of(context).colorScheme
+                : ColorScheme.light(
+                    primary: brandNavy,
+                    onPrimary: Colors.white,
+                    surface: surface,
+                    onSurface: brandNavy,
+                  ),
+            dialogTheme: DialogThemeData(backgroundColor: surface),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) provider.setFilter(picked.start, picked.end);
   }

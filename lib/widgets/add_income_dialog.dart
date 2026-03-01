@@ -18,11 +18,11 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   final _noteController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
 
-  // ── 3-Tone Palette ──
-  static const Color deepNavy = Color(0xFF0A1128);
-  static const Color darkGray = Color(0xFF1E2A3A);
-  static const Color pureWhite = Color(0xFFFFFFFF);
-  static const Color iconCalendar = Color(0xFFFFD740);
+  // ── Palette Accessors ──
+  Color get background => Theme.of(context).scaffoldBackgroundColor;
+  Color get onSurface => Theme.of(context).colorScheme.onSurface;
+  Color get surface => Theme.of(context).colorScheme.surface;
+  static const Color brandNavy = Color(0xFF0F172A);
 
   @override
   void initState() {
@@ -37,10 +37,11 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: darkGray,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      backgroundColor: surface,
+      surfaceTintColor: Colors.transparent,
       child: Padding(
-        padding: const EdgeInsets.all(28),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,72 +50,78 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
               widget.entry == null ? 'เพิ่มรายการใหม่' : 'แก้ไขรายการ',
               style: GoogleFonts.anuphan(
                 fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: pureWhite,
+                fontSize: 22,
+                color: onSurface,
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
             _buildLabel('จำนวนเงิน (฿)'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _amountController,
               decoration: _inputDecoration('0.00'),
-              keyboardType: TextInputType.number,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: GoogleFonts.anuphan(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: pureWhite,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: onSurface,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             _buildLabel('บันทึกช่วยจำ'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _noteController,
               decoration: _inputDecoration('ระบุรายละเอียด...'),
-              style: GoogleFonts.anuphan(fontSize: 14, color: pureWhite),
+              style: GoogleFonts.anuphan(
+                fontSize: 16,
+                color: onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             _buildLabel('วันที่'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             InkWell(
               onTap: _pickDate,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 16,
+                  vertical: 18,
+                  horizontal: 20,
                 ),
                 decoration: BoxDecoration(
-                  color: deepNavy,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: pureWhite.withValues(alpha: 0.08)),
+                  color: background,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: onSurface.withValues(alpha: 0.05)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.calendar_today_rounded,
                       size: 18,
-                      color: iconCalendar,
+                      color: onSurface,
                     ),
                     const SizedBox(width: 12),
                     Text(
                       DateFormat('dd MMMM yyyy').format(_selectedDate),
                       style: GoogleFonts.anuphan(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: pureWhite,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: onSurface,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 40),
 
             Row(
               children: [
@@ -124,30 +131,35 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
                     child: Text(
                       'ยกเลิก',
                       style: GoogleFonts.anuphan(
-                        fontWeight: FontWeight.w600,
-                        color: pureWhite.withValues(alpha: 0.4),
+                        fontWeight: FontWeight.w700,
+                        color: onSurface.withValues(alpha: 0.6),
+                        fontSize: 15,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: _save,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: pureWhite,
-                      foregroundColor: deepNavy,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      elevation: 4,
+                      shadowColor:
+                          (Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black
+                          : brandNavy.withValues(alpha: 0.3)),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: Text(
                       'บันทึก',
                       style: GoogleFonts.anuphan(
                         fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        fontSize: 16,
                       ),
                     ),
                   ),
@@ -164,9 +176,10 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
     return Text(
       text,
       style: GoogleFonts.anuphan(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: pureWhite.withValues(alpha: 0.35),
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        color: onSurface.withValues(alpha: 0.5),
+        letterSpacing: 0.5,
       ),
     );
   }
@@ -174,34 +187,47 @@ class _AddIncomeDialogState extends State<AddIncomeDialog> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.anuphan(color: pureWhite.withValues(alpha: 0.15)),
+      hintStyle: GoogleFonts.anuphan(color: onSurface.withValues(alpha: 0.3)),
       filled: true,
-      fillColor: deepNavy,
+      fillColor: background,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: pureWhite.withValues(alpha: 0.08)),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(color: pureWhite.withValues(alpha: 0.08)),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: BorderSide(
-          color: pureWhite.withValues(alpha: 0.3),
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: onSurface, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.all(20),
     );
   }
 
   Future<void> _pickDate() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: isDark
+                ? Theme.of(context).colorScheme
+                : ColorScheme.light(
+                    primary: brandNavy,
+                    onPrimary: Colors.white,
+                    surface: surface,
+                    onSurface: brandNavy,
+                  ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) setState(() => _selectedDate = picked);
   }
